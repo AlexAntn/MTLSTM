@@ -175,7 +175,7 @@ direction = True            # True - language to actions; False - actions to lan
 alternate = True            # Alternate direction - False will train only one direction
 alpha = 0.5                 # 1 - language loss has more weight, 0 - action loss has more weight
 
-NEPOCH = 3#1235050            # number of times to train each batch
+NEPOCH = 1235050            # number of times to train each batch
 threshold_lang = 0.001      # early stopping language loss threshold
 threshold_motor = 0.5       # early stopping action loss threshold
 average_loss = 1000.0       # initial value for the average loss (action+language) - arbitrary
@@ -209,7 +209,7 @@ stepEachSeq = Lang_stepEachSeq + Motor_stepEachSeq  # total number of steps in 1
 LEARNING_RATE = 5 * 1e-3    # Learning Rate of the network
 
 ################################### Network Initialization ###################################
-MTRNN = CTRNNModel([input_layer, lang_dim1, lang_dim2, meaning_dim, motor_dim2, motor_dim1, motor_layer], [2, 5, 60, 100, 60, 5, 2], stepEachSeq, lang_input, motor_input, LEARNING_RATE)
+MTRNN = MTLSTMModel([input_layer, lang_dim1, lang_dim2, meaning_dim, motor_dim2, motor_dim1, motor_layer], [2, 5, 60, 100, 60, 5, 2], stepEachSeq, lang_input, motor_input, LEARNING_RATE)
 
 
 #################################### acquire data ##########################################
