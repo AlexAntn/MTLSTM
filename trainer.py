@@ -263,10 +263,13 @@ MTLSTM.sess.run(tf.global_variables_initializer())
 
 flag_save = False           # flag indicating if the network has been saved or not (if it reaches the limit of epochs without having saved yet)
 
+epoch_idx = 0       # initialize epochs
+
 if not START_FROM_SCRATCH:
     MTLSTM.saver.restore(MTLSTM.sess, load_path)
+    temp_list = load_path.split("_")
+    epoch_idx = int(temp_list[1])
 
-epoch_idx = 0       # initialize epochs
 counter_lang = 0    # initialize counter for number of language training epochs
 counter_motor = 0   # initialize counter for number of action training epochs
 

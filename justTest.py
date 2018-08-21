@@ -175,7 +175,7 @@ direction = True            # True - language to actions; False - actions to lan
 alternate = True            # Alternate direction - False will train only one direction
 alpha = 0.5                 # 1 - language loss has more weight, 0 - action loss has more weight
 
-NEPOCH = 3#1235050            # number of times to train each batch
+NEPOCH = 1235050            # number of times to train each batch
 threshold_lang = 0.001      # early stopping language loss threshold
 threshold_motor = 0.5       # early stopping action loss threshold
 average_loss = 1000.0       # initial value for the average loss (action+language) - arbitrary
@@ -209,7 +209,7 @@ stepEachSeq = Lang_stepEachSeq + Motor_stepEachSeq  # total number of steps in 1
 LEARNING_RATE = 5 * 1e-3    # Learning Rate of the network
 
 ################################### Network Initialization ###################################
-MTRNN = CTRNNModel([input_layer, lang_dim1, lang_dim2, meaning_dim, motor_dim2, motor_dim1, motor_layer], [2, 5, 60, 100, 60, 5, 2], stepEachSeq, lang_input, motor_input, LEARNING_RATE)
+MTRNN = MTLSTMModel([input_layer, lang_dim1, lang_dim2, meaning_dim, motor_dim2, motor_dim1, motor_layer], [2, 5, 60, 100, 60, 5, 2], stepEachSeq, lang_input, motor_input, LEARNING_RATE)
 
 
 #################################### acquire data ##########################################
@@ -247,8 +247,10 @@ else:
 print("data loaded")
 
 test_false = True       # True to test action generation
-test_true = False       # True to test sentence generation
-PRINT_TABLE = False     # True to print language output matrix
+test_true = True        # True to test sentence generation
+PRINT_TABLE = True      # True to print language output matrix
+
+jumps = 1               # number of sequences skipped per loop. 1 means all sequences will be tested
 
 ############################### 
 save_path = my_path + "/mtrnn_387111_loss_0.11538351478520781"
@@ -288,7 +290,7 @@ how_many_times = 0      # marker for the last verb that was processed and plotte
 MTRNN.forward_step_test()
 tf.get_default_graph().finalize()
 
-for i in range(0, numSeq, 1):
+for i in range(0, numSeq, jumps):
 
     print("sentence: ", sentence_list[i])
 
@@ -331,7 +333,7 @@ for i in range(0, numSeq, 1):
             State = new_state
             
         sentence = ""
-        for t in range(stepEachSeq):
+        for t in range(100,stepEachSeq):
             for g in range(lang_input):
                 if softmax_list[t,g] == max(softmax_list[t]): 
                     if g <26:
@@ -367,7 +369,7 @@ for i in range(0, numSeq, 1):
         print("output: ",sentence)
         print("#######################################")
         sentence = ""
-        for g in range(stepEachSeq):
+        for g in range(100, stepEachSeq):
             if y_train[i,g] == 26:
                 sentence += " "
             elif y_train[i,g] == 27:
