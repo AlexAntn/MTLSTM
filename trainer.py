@@ -175,8 +175,8 @@ direction = True            # True - language to actions; False - actions to lan
 alternate = True            # Alternate direction - False will train only one direction
 alpha = 0.5                 # 1 - language loss has more weight, 0 - action loss has more weight
 
-NEPOCH = 3#1235050            # number of times to train each batch
-threshold_lang = 0.001      # early stopping language loss threshold
+NEPOCH = 1000000            # number of times to train each batch
+threshold_lang = 0.01      # early stopping language loss threshold
 threshold_motor = 0.5       # early stopping action loss threshold
 average_loss = 1000.0       # initial value for the average loss (action+language) - arbitrary
 
@@ -190,15 +190,15 @@ motor_loss = 2              # Save model if action loss below this value
 best_loss = alpha * lang_loss + (1-alpha) * motor_loss
 
 ########################################## Model parameters ################################
-lang_input = 28     # size of output/input language
-input_layer = 40    # I/O language layer
-lang_dim1 = 160     # fast context language layer
-lang_dim2 = 35      # slow context language layer
-meaning_dim = 25    # meaning layer
-motor_dim2 = 35     # slow context action layer
-motor_dim1 = 160    # fast context action layer
-motor_layer = 140   # I/O action layer
-motor_input = 42    # size of output/input action
+lang_input = 28         # size of output/input language
+input_layer = 40        # I/O language layer
+lang_dim1 = 160         # fast context language layer
+lang_dim2 = 35          # slow context language layer
+meaning_dim = 25        # meaning layer
+motor_dim2 = 35         # slow context action layer
+motor_dim1 = 160        # fast context action layer
+motor_layer = 140       # I/O action layer
+motor_input = 42        # size of output/input action
 
 
 numSeq = 432            # number of sequences
@@ -209,7 +209,7 @@ stepEachSeq = Lang_stepEachSeq + Motor_stepEachSeq  # total number of steps in 1
 LEARNING_RATE = 5 * 1e-3    # Learning Rate of the network
 
 ################################### Network Initialization ###################################
-MTRNN = CTRNNModel([input_layer, lang_dim1, lang_dim2, meaning_dim, motor_dim2, motor_dim1, motor_layer], [2, 5, 60, 100, 60, 5, 2], stepEachSeq, lang_input, motor_input, LEARNING_RATE)
+MTLSTM = MTLSTMModel([input_layer, lang_dim1, lang_dim2, meaning_dim, motor_dim2, motor_dim1, motor_layer], [2, 5, 60, 100, 60, 5, 2], stepEachSeq, lang_input, motor_input, LEARNING_RATE)
 
 
 #################################### acquire data ##########################################
@@ -259,12 +259,12 @@ init_state_sc_m = np.zeros([numSeqmod_b, motor_dim2], dtype = np.float32)
 
 ############################### training iterations #########################################
 
-MTRNN.sess.run(tf.global_variables_initializer())
+MTLSTM.sess.run(tf.global_variables_initializer())
 
 flag_save = False           # flag indicating if the network has been saved or not (if it reaches the limit of epochs without having saved yet)
 
 if not START_FROM_SCRATCH:
-    MTRNN.saver.restore(MTRNN.sess, load_path)
+    MTLSTM.saver.restore(MTLSTM.sess, load_path)
 
 epoch_idx = 0       # initialize epochs
 counter_lang = 0    # initialize counter for number of language training epochs
@@ -313,7 +313,7 @@ while (alternate and (lang_loss_list[-1] > threshold_lang or motor_loss_list[-1]
 
     t0 = datetime.datetime.now()
     # run the network with the data we prepared #
-    _total_loss, _train_op, _state_tuple = MTRNN.sess.run([MTRNN.total_loss, MTRNN.train_op, MTRNN.state_tuple], feed_dict={MTRNN.x:lang_inputs, MTRNN.y:y_train_b, MTRNN.m:motor_inputs, MTRNN.m_o:motor_outputs, MTRNN.direction:direction, 'initU_0:0':init_state_IO_l, 'initC_0:0':init_state_IO_l, 'initU_1:0':init_state_fc_l, 'initC_1:0':init_state_fc_l, 'initU_2:0':init_state_sc_l, 'initC_2:0':init_state_sc_l, 'initU_3:0':init_state_ml, 'initC_3:0':init_state_ml, 'initU_4:0':init_state_sc_m, 'initC_4:0':init_state_sc_m, 'initU_5:0':init_state_fc_m, 'initC_5:0':init_state_fc_m, 'initU_6:0':init_state_IO_m, 'initC_6:0':init_state_IO_m})
+    _total_loss, _train_op, _state_tuple = MTLSTM.sess.run([MTLSTM.total_loss, MTLSTM.train_op, MTLSTM.state_tuple], feed_dict={MTLSTM.x:lang_inputs, MTLSTM.y:y_train_b, MTLSTM.m:motor_inputs, MTLSTM.m_o:motor_outputs, MTLSTM.direction:direction, 'initU_0:0':init_state_IO_l, 'initC_0:0':init_state_IO_l, 'initU_1:0':init_state_fc_l, 'initC_1:0':init_state_fc_l, 'initU_2:0':init_state_sc_l, 'initC_2:0':init_state_sc_l, 'initU_3:0':init_state_ml, 'initC_3:0':init_state_ml, 'initU_4:0':init_state_sc_m, 'initC_4:0':init_state_sc_m, 'initU_5:0':init_state_fc_m, 'initC_5:0':init_state_fc_m, 'initU_6:0':init_state_IO_m, 'initC_6:0':init_state_IO_m})
     t1 = datetime.datetime.now()
     print("epoch time: ", (t1-t0).total_seconds())      # check training time #
     if direction:       # if training language, save language loss
@@ -334,7 +334,7 @@ while (alternate and (lang_loss_list[-1] > threshold_lang or motor_loss_list[-1]
     print("epoch "+str(epoch_idx)+", loss: "+str(loss))
     if average_loss <= best_loss:           # if average loss lower than best, save model
         model_path = my_path + "/mtrnn_"+str(epoch_idx) + "_loss_" + str(average_loss)
-        save_path = MTRNN.saver.save(MTRNN.sess, model_path)
+        save_path = MTLSTM.saver.save(MTLSTM.sess, model_path)
         best_loss = average_loss
         flag_save =True
     epoch_idx += 1
@@ -377,11 +377,11 @@ plot(loss_list, fig, ax)
 #####################  If the network was never saved during the whole training ############
 if not flag_save:
     model_path = my_path + "/mtrnn_"+str(epoch_idx) + "_loss_" + str(average_loss)
-    save_path = MTRNN.saver.save(MTRNN.sess, model_path)
+    save_path = MTLSTM.saver.save(MTLSTM.sess, model_path)
 ############################################################################################
 
 ########################################## TEST ############################################
-MTRNN.saver.restore(MTRNN.sess, save_path)
+MTLSTM.saver.restore(MTLSTM.sess, save_path)
 plt.ioff()
 plt.show()
 print("testing")
@@ -401,7 +401,7 @@ init_state_IO_m = np.zeros([1, motor_layer], dtype = np.float32)
 init_state_fc_m = np.zeros([1, motor_dim1], dtype = np.float32)
 init_state_sc_m = np.zeros([1, motor_dim2], dtype = np.float32)
 
-MTRNN.forward_step_test()   # function that initializes a smaller graph of the network, no training functions
+MTLSTM.forward_step_test()   # function that initializes a smaller graph of the network, no training functions
 tf.get_default_graph().finalize()
 
 for i in range(0, numSeq, jumps):
@@ -443,7 +443,7 @@ for i in range(0, numSeq, jumps):
             init_state_60 = State[6][0]
             init_state_61 = State[6][1]
 
-            outputs, new_state, softmax = MTRNN.sess.run([MTRNN.outputs, MTRNN.new_state, MTRNN.softmax], feed_dict = {MTRNN.direction: direction, MTRNN.Inputs_m_t: input_x, MTRNN.Inputs_sentence_t: input_sentence, 'test/initU_0:0':init_state_01, 'test/initC_0:0':init_state_00, 'test/initU_1:0':init_state_11, 'test/initC_1:0':init_state_10, 'test/initU_2:0':init_state_21, 'test/initC_2:0':init_state_20, 'test/initU_3:0':init_state_31, 'test/initC_3:0':init_state_30, 'test/initU_4:0':init_state_41, 'test/initC_4:0':init_state_40, 'test/initU_5:0':init_state_51, 'test/initC_5:0':init_state_50, 'test/initU_6:0':init_state_61, 'test/initC_6:0':init_state_60})
+            outputs, new_state, softmax = MTLSTM.sess.run([MTLSTM.outputs, MTLSTM.new_state, MTLSTM.softmax], feed_dict = {MTLSTM.direction: direction, MTLSTM.Inputs_m_t: input_x, MTLSTM.Inputs_sentence_t: input_sentence, 'test/initU_0:0':init_state_01, 'test/initC_0:0':init_state_00, 'test/initU_1:0':init_state_11, 'test/initC_1:0':init_state_10, 'test/initU_2:0':init_state_21, 'test/initC_2:0':init_state_20, 'test/initU_3:0':init_state_31, 'test/initC_3:0':init_state_30, 'test/initU_4:0':init_state_41, 'test/initC_4:0':init_state_40, 'test/initU_5:0':init_state_51, 'test/initC_5:0':init_state_50, 'test/initU_6:0':init_state_61, 'test/initC_6:0':init_state_60})
 
             softmax_list[l, :] = softmax
             State = new_state
@@ -518,10 +518,9 @@ for i in range(0, numSeq, jumps):
         for l in range(stepEachSeq):
             if l == 0:          # only provide input at initial step
                 input_x[:,:] = new_motor_in[0,l,:]
-                input_sentence[:,:] = new_lang_in[0,l,:]
             else:
                 input_x = np.zeros([1, motor_input], dtype = np.float32)
-                input_sentence = np.zeros([1, lang_input], dtype = np.float32)
+            input_sentence[:,:] = new_lang_in[0,l,:]
             init_state_00 = State[0][0]
             init_state_01 = State[0][1]
             init_state_10 = State[1][0]
@@ -537,7 +536,7 @@ for i in range(0, numSeq, jumps):
             init_state_60 = State[6][0]
             init_state_61 = State[6][1]
 
-            outputs, new_state = MTRNN.sess.run([MTRNN.outputs, MTRNN.new_state], feed_dict = {MTRNN.direction: direction, MTRNN.Inputs_m_t: input_x, MTRNN.Inputs_sentence_t: input_sentence, 'test/initU_0:0':init_state_01, 'test/initC_0:0':init_state_00, 'test/initU_1:0':init_state_11, 'test/initC_1:0':init_state_10, 'test/initU_2:0':init_state_21, 'test/initC_2:0':init_state_20, 'test/initU_3:0':init_state_31, 'test/initC_3:0':init_state_30, 'test/initU_4:0':init_state_41, 'test/initC_4:0':init_state_40, 'test/initU_5:0':init_state_51, 'test/initC_5:0':init_state_50, 'test/initU_6:0':init_state_61, 'test/initC_6:0':init_state_60})
+            outputs, new_state = MTLSTM.sess.run([MTLSTM.outputs, MTLSTM.new_state], feed_dict = {MTLSTM.direction: direction, MTLSTM.Inputs_m_t: input_x, MTLSTM.Inputs_sentence_t: input_sentence, 'test/initU_0:0':init_state_01, 'test/initC_0:0':init_state_00, 'test/initU_1:0':init_state_11, 'test/initC_1:0':init_state_10, 'test/initU_2:0':init_state_21, 'test/initC_2:0':init_state_20, 'test/initU_3:0':init_state_31, 'test/initC_3:0':init_state_30, 'test/initU_4:0':init_state_41, 'test/initC_4:0':init_state_40, 'test/initU_5:0':init_state_51, 'test/initC_5:0':init_state_50, 'test/initU_6:0':init_state_61, 'test/initC_6:0':init_state_60})
             output_list += [outputs]
 
             State = new_state
@@ -551,5 +550,5 @@ for i in range(0, numSeq, jumps):
             plt.show()
         print("\n")
 
-MTRNN.sess.close()
+MTLSTM.sess.close()
 
